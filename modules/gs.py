@@ -67,6 +67,8 @@ class Grapesaur:
             self.showError()
     
     def __getDtype(self, colname, df):
+        if df == "NA":
+            return "Not Found"
         fulldtype = [dtype for name, dtype in df.dtypes if name == colname]
         dtype = fulldtype[0].split('<').pop(0)
         return dtype
@@ -136,15 +138,71 @@ class Grapesaur:
                     return colname
             else:
                 return self.getColumnNames(colname, self.__searchTrueDF(colname, df))
-    
-    def showColumnData(self, colname):
-        self.df.networks.show()
 
-    def showData(self, no = 20, vertical = False, truncate = True, colname = None):
+    def showRows(self, no = 20, vertical = False, truncate = True, colname = None, df = None, all = False):
+        if df == None:
+            df = self.df
         if colname == None:
-            self.df.show(no, vertical=vertical, truncate=truncate)
+            if not all:
+                df.show(no, vertical=vertical, truncate=truncate)
+            else:
+                df.show(df.count(), vertical=vertical, truncate=truncate)
         else:
-            self.df.select(colname).show(no, vertical=vertical, truncate=truncate)
+            if colname in df.columns:
+                if not all:
+                    df.select(colname).show(no, vertical=vertical, truncate=truncate)
+                else:
+                    df.select(colname).show(df.select(colname).count(), vertical=vertical, truncate=truncate)
+            else:
+                df = self.__searchTrueDF(colname, df)
+                if df == "NA":
+                    print("No column named {} found".format(colname))
+                else:
+                    if not all:
+                        df.select(colname).show(no, vertical=vertical, truncate=truncate)
+                    else:
+                        df.select(colname).show(df.select(colname).count(), vertical=vertical, truncate=truncate)
+    
+    def showUniqueData(self, colname, df = None, desc = True):
+        if df == None:
+            df = self.df
+        if colname not in df.columns:
+            df = self.__searchTrueDF(colname, df)
+        dt = self.__getDtype(colname, df)
+        if dt == "struct":
+            colname = "{}.*".format(colname)
+            df = df.select(colname)
+            self.showRows(all=True, truncate = True, df=df)
+        else:
+            df = df.select(colname)
+            if desc:
+                df = df.groupby(colname).count().orderBy(col('count').desc())
+            else:
+                df = df.groupby(colname).count().orderBy(col('count'))
+            self.showRows(all=True, truncate = False, df=df)
 
-    def showFullSchema(self):
+    def tree(self):
         self.df.printSchema()
+
+    def search(self, searchquery, searchfield, displayfields):
+        df = self.df
+        tempdf = self.__searchTrueDF(searchfield, df)
+        if tempdf == 'NA':
+            return "The searchfield is not found"
+        self.showRows(no = 1, df = tempdf)
+        return (searchquery, searchfield, displayfields)
+
+    def getDuplicateCount(self):
+        pass
+
+    def removeDuplicates(self):
+        #send to another just name this one readOnlyOperations and the other writeOperations
+        pass
+
+    def convertFile(self):
+        #send to process
+        pass
+
+    def compareTwoDatasets(self):
+        # send this to another module this module is already cluttered as is
+        pass
