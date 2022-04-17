@@ -1,2 +1,2 @@
 # grapesaur
-uses PyQT5 and PySpark to implement data analysis tasks
+Pyspark implementation of data analysis tool (API Level)

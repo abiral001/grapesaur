@@ -7,6 +7,7 @@ import os
 class Grapesaur:
     def __init__(self, DIR):
         self.DIR = DIR
+        self.flatCols = list()
         try:
             self.spark = SparkSession.builder.appName("Grapesaur").getOrCreate()
             self.spark.sparkContext.setLogLevel("ERROR")
@@ -131,8 +132,8 @@ class Grapesaur:
                     columnNames = df.select(colname).columns
                     return columnNames
                 elif dt == 'array':
-                    elements = df.select(explode(df[colname]))
-                    columnNames = self.getColumnNames('col', elements)
+                    elements = df.select(explode(df[colname]).alias(colname))
+                    columnNames = self.getColumnNames(colname, elements)
                     return columnNames
                 else:
                     return colname
@@ -184,16 +185,113 @@ class Grapesaur:
     def tree(self):
         self.df.printSchema()
 
-    def search(self, searchquery, searchfield, displayfields):
+    def search(self, searchquery=None, searchfield=None, displayfields = None, show = True):
         df = self.df
         tempdf = self.__searchTrueDF(searchfield, df)
         if tempdf == 'NA':
             return "The searchfield is not found"
-        self.showRows(no = 1, df = tempdf)
-        return (searchquery, searchfield, displayfields)
+        self.flatten()
+        allCols = ""
+        for col in self.flatCols:
+            col = col.split('.')
+            if searchfield in col:
+                allCols = col
+                break
+        if allCols == "":
+            return "No search field found"
+        resultDf = df
+        for col in allCols:
+            resultDf = resultDf[col]
+        if searchquery != None:
+            finaldf = df.filter(resultDf.rlike(searchquery))
+        else:
+            finaldf = df
+        if displayfields != None:
+            displayfields = [x.strip() for x in displayfields.split(',')]
+            toDisplay = list()
+            for onefield in displayfields:
+                tempCols = ""
+                for col in self.flatCols:
+                    col = col.split('.')
+                    if onefield in col:
+                        tempCols = col
+                        break
+                if tempCols == "":
+                    return "{} field not found".format(onefield)
+                tempcolnames = ".".join(tempCols)
+                toDisplay.append("{} as {}".format(tempcolnames, onefield))
+            tempcolnames = ".".join(allCols)
+            toDisplay.append("{} as {}".format(tempcolnames, searchfield))
+            query = "select {} from df".format(", ".join(toDisplay))
+            finaldf = self.sqlQuery(query, finaldf)
+        if show:
+            self.showRows(all=True, df = finaldf, truncate = False)
+        else:
+            return finaldf
+    
+    def flatten(self, df = None, parentColumn = None):
+        if df == None:
+            df = self.df
+        for colname in df.columns:
+            count = 0
+            subcols = self.getColumnNames(colname, df = df)
+            tempMainCol = colname
+            tp = str(type(subcols))
+            if "list" in tp:
+                tempCol = subcols[0]
+                newDf = self.__searchTrueDF(tempCol, df)
+                if parentColumn == None:
+                    self.flatten(df = newDf, parentColumn = tempMainCol)
+                else:
+                    self.flatten(df = newDf, parentColumn = parentColumn+"."+tempMainCol)
+            else:
+                if parentColumn == None:
+                    self.flatCols.append(subcols)
+                else:
+                    self.flatCols.append(parentColumn+"."+subcols)
+            count += 1
 
-    def getDuplicateCount(self):
-        pass
+    def summary(self):
+        print("File selected = {}".format(self.fileName))
+        print("="*(20+len(self.fileName)))
+        print("Column Names: {}".format(", ".join(self.getColumnNames())))
+        print("Column Count: {}".format(len(self.getColumnNames())))
+        print("Total Rows: {}".format(self.df.count()))
+        print("Total Duplicates by all Columns: {}".format(self.getDuplicateCount()))
+        print('Tree view of the schema:')
+        self.tree()
+
+    def sqlQuery(self, query, df = None):
+        if df == None:
+            df = self.df
+        df.createOrReplaceTempView('tempview')
+        fullquery = query.replace('df', 'tempview')
+        return self.spark.sql(fullquery)
+
+    def getDuplicateCount(self, columns = None):
+        df = self.df
+        if columns != None:
+            columns = [x.strip() for x in columns.split(',')]
+            self.flatten()
+            toDisplay = list()
+            for onefield in columns:
+                tempCols = ""
+                for col in self.flatCols:
+                    col = col.split('.')
+                    if onefield in col:
+                        tempCols = col
+                        break
+                if tempCols == "":
+                    return "{} field not found".format(onefield)
+                tempcolnames = ".".join(tempCols)
+                toDisplay.append("{} as {}".format(tempcolnames, onefield))
+            toDisplay = ", ".join(toDisplay)
+            query = "select distinct {} from df".format(toDisplay)
+            df = self.sqlQuery(query)
+        else:
+            df = df.distinct()
+        noDuplicats = self.df.count() - df.count()
+        return noDuplicats
 
     def removeDuplicates(self):
         #send to another just name this one readOnlyOperations and the other writeOperations
