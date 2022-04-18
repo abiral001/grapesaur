@@ -128,9 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-.txt
-.json
-.lock
-
+*.lock
 *.txt
 *.json
