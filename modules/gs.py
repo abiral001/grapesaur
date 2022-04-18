@@ -79,7 +79,7 @@ class Grapesaur:
             return df
         for col in df.columns:
             dt = self.__getDtype(col, df)
-            if dt == 'struct':
+            if 'struct' in dt:
                 tempCol = "{}.*".format(col)
                 newDF = df.select(tempCol)
                 newcols = newDF.columns
@@ -87,7 +87,7 @@ class Grapesaur:
                     return newDF
                 else:
                     return self.__searchTrueDF(colname, newDF)
-            elif dt == 'array':
+            elif 'array' in dt:
                 temp = self.__searchTrueDF(colname, df.select(explode(df[col])))
                 if temp != "NA" or df.columns.index(col) == (len(df.columns)-1):
                     return temp
@@ -233,12 +233,11 @@ class Grapesaur:
         if df == None:
             df = self.df
         for colname in df.columns:
-            count = 0
             subcols = self.getColumnNames(colname, df = df)
             tempMainCol = colname
             tp = str(type(subcols))
             if "list" in tp:
-                tempCol = subcols[0]
+                tempCol = subcols[-1]
                 newDf = self.__searchTrueDF(tempCol, df)
                 if parentColumn == None:
                     self.flatten(df = newDf, parentColumn = tempMainCol)
@@ -249,7 +248,6 @@ class Grapesaur:
                     self.flatCols.append(subcols)
                 else:
                     self.flatCols.append(parentColumn+"."+subcols)
-            count += 1
 
     def summary(self):
         print("File selected = {}".format(self.fileName))
