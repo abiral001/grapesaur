@@ -10,6 +10,6 @@ if __name__ == "__main__":
     # gs.showRows(colname = 'provider_type', truncate=False, all=True)
     # print(gs.getColumnNames('provider'))
     # gs.showUniqueData('provider_type')
-    print(gs.search('Paul', searchfield='unparsed_name'))
+    #print(gs.search('Paul', searchfield='unparsed_name'))
     # gs.summary()
     gs.tree()
