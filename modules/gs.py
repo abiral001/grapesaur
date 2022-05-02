@@ -1,3 +1,4 @@
+from re import S
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
@@ -75,6 +76,14 @@ class Grapesaur:
         return dtype
 
     def __searchTrueDF(self, colname, df):
+        if "." in colname:
+            cols = colname.split(".")
+            for col in cols:
+                if self.__searchTrueDF(col, df) == "NA":
+                    print("Column name mismatch")
+                    return "NA"
+                df = self.__searchTrueDF(col, df).select(col)
+            return df
         if colname in df.columns:
             return df
         for col in df.columns:
@@ -92,6 +101,23 @@ class Grapesaur:
                 if temp != "NA" or df.columns.index(col) == (len(df.columns)-1):
                     return temp
         return 'NA'
+
+    def __getFullColumnPath(self, colname):
+        if len(self.flatCols) == 0:
+            self.flatten()
+        actualcolname = None
+        if "." not in colname:
+            for col in self.flatCols:
+                splitnames = col.split(".")
+                if colname in splitnames:
+                    actualcolname = col
+                    break
+        else:
+            for col in self.flatCols:
+                if colname in col:
+                    actualcolname = col
+                    break
+        return actualcolname
 
     def showError(self):
         if (self.error['status'] == True):
@@ -167,8 +193,12 @@ class Grapesaur:
     def showUniqueData(self, colname, df = None, desc = True):
         if df == None:
             df = self.df
-        if colname not in df.columns:
+        if "." in colname:
             df = self.__searchTrueDF(colname, df)
+            colname = colname.split(".").pop()
+        else:
+            if colname not in df.columns:
+                df = self.__searchTrueDF(colname, df)
         dt = self.__getDtype(colname, df)
         if dt == "struct":
             colname = "{}.*".format(colname)
@@ -185,49 +215,28 @@ class Grapesaur:
     def tree(self):
         self.df.printSchema()
 
-    def search(self, searchquery=None, searchfield=None, displayfields = None, show = True):
-        df = self.df
-        tempdf = self.__searchTrueDF(searchfield, df)
-        if tempdf == 'NA':
-            return "The searchfield is not found"
+    def search(self, searchquery=None, searchfield=None, displayfields = None, show = True, df = None):
+        if df == None:
+            df = self.df
+        trueDf = self.__searchTrueDF(searchfield, df)
+        if trueDf == "NA":
+            print("searchfield not found in the data schema")
+            return
         self.flatten()
-        allCols = ""
-        for col in self.flatCols:
-            col = col.split('.')
-            if searchfield in col:
-                allCols = col
-                break
-        if allCols == "":
-            return "No search field found"
-        resultDf = df
-        for col in allCols:
-            resultDf = resultDf[col]
-        if searchquery != None:
-            finaldf = df.filter(resultDf.rlike(searchquery))
+        if displayfields == None:
+            finalfields = "*"
         else:
-            finaldf = df
-        if displayfields != None:
-            displayfields = [x.strip() for x in displayfields.split(',')]
-            toDisplay = list()
-            for onefield in displayfields:
-                tempCols = ""
-                for col in self.flatCols:
-                    col = col.split('.')
-                    if onefield in col:
-                        tempCols = col
-                        break
-                if tempCols == "":
-                    return "{} field not found".format(onefield)
-                tempcolnames = ".".join(tempCols)
-                toDisplay.append("{} as {}".format(tempcolnames, onefield))
-            tempcolnames = ".".join(allCols)
-            toDisplay.append("{} as {}".format(tempcolnames, searchfield))
-            query = "select {} from df".format(", ".join(toDisplay))
-            finaldf = self.sqlQuery(query, finaldf)
-        if show:
-            self.showRows(all=True, df = finaldf, truncate = False)
-        else:
-            return finaldf
+            displayfields = [x.strip(" ") for x in displayfields.split(",")]
+            fullname = self.__getFullColumnPath(searchfield)
+            finalfields = list(["{} as {}".format(fullname, fullname.replace(".", "_"))])
+            for mcol in displayfields:
+                tempname = self.__getFullColumnPath(mcol)
+                finalfields.append("{} as {}".format(tempname, tempname.replace(".", "_")))
+            finalfields = ", ".join(finalfields)
+        #searchfields process here
+        query = "select {} from df where array_contains({}, '{}')".format(finalfields, searchfield, searchquery)
+        resultDf = self.sqlQuery(query)
+        self.showRows(df = resultDf, all=True, truncate = False)
     
     def flatten(self, df = None, parentColumn = None):
         if df == None:
