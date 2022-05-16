@@ -131,3 +131,5 @@ dmypy.json
 *.lock
 *.txt
 *.json
+*.jl
+*.csv

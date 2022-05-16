@@ -6,15 +6,26 @@ from pyspark.sql.types import *
 import os
 
 class Grapesaur:
-    def __init__(self, DIR):
+    def __init__(self, DIR, increaseMemory = False):
         self.DIR = DIR
         self.flatCols = list()
-        try:
-            self.spark = SparkSession.builder.appName("Grapesaur").getOrCreate()
-            self.spark.sparkContext.setLogLevel("ERROR")
-        except:
-            self.__setError(1)
-        self.__setError(2)
+        if not increaseMemory:
+            try:
+                self.spark = SparkSession.builder.appName("Grapesaur").getOrCreate()
+                self.spark.sparkContext.setLogLevel("ERROR")
+            except:
+                self.__setError(1)
+            self.__setError(2)
+        else:
+            try:
+                self.spark = SparkSession.builder \
+                    .config("spark.driver.memory", "10g") \
+                    .appName("Grapesaur") \
+                    .getOrCreate()
+                self.spark.sparkContext.setLogLevel("ERROR")
+            except:
+                self.__setError(1)
+            self.__setError(2)
     
     def __del__(self):
         self.spark.stop()
@@ -129,7 +140,7 @@ class Grapesaur:
         self.fileName = fileName
         extension = self.__getFiletype(self.fileName)
         if self.error['status'] == False:
-            if extension == "json":
+            if extension == "json" or extension == "jl":
                 df = self.spark.read.json(self.fileName)
             elif extension == "csv":
                 df = self.spark.read.csv(self.fileName)
@@ -301,11 +312,11 @@ class Grapesaur:
         return noDuplicats
 
     def removeDuplicates(self):
-        #send to another just name this one readOnlyOperations and the other writeOperations
+        # send to another just name this one readOnlyOperations and the other writeOperations
         pass
 
     def convertFile(self):
-        #send to process
+        # send to process
         pass
 
     def compareTwoDatasets(self):
