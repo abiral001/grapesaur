@@ -275,7 +275,7 @@ class Grapesaur:
         print("Column Names: {}".format(", ".join(self.getColumnNames())))
         print("Column Count: {}".format(len(self.getColumnNames())))
         print("Total Rows: {}".format(self.df.count()))
-        print("Total Duplicates by all Columns: {}".format(self.getDuplicateCount()))
+        # print("Total Duplicates by all Columns: {}".format(self.getDuplicateCount()))
         print('Tree view of the schema:')
         self.tree()
 
@@ -287,6 +287,7 @@ class Grapesaur:
         return self.spark.sql(fullquery)
 
     def getDuplicateCount(self, columns = None):
+        # optimize this
         df = self.df
         if columns != None:
             columns = [x.strip() for x in columns.split(',')]

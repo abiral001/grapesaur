@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 if __name__ == "__main__":
 
     gs = Grapesaur(os.getcwd(), increaseMemory=True)
-    gs.readFile("2816_amazon_com-items-2022-03-31T13-44-37.jl")
+    # gs.readFile("2816_amazon_com-items-2022-03-31T13-44-37.jl")
     # gs.showRows(10)
     # gs.showRows(colname = 'address_string', truncate=False, all=True)
     # print(gs.getColumnNames('networks'))
