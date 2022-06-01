@@ -143,7 +143,7 @@ class Grapesaur:
             if extension == "json" or extension == "jl":
                 df = self.spark.read.json(self.fileName)
             elif extension == "csv":
-                df = self.spark.read.csv(self.fileName)
+                df = self.spark.read.csv(self.fileName, header=True)
             else:
                 self.__setError(4)
                 self.showError()
@@ -244,10 +244,13 @@ class Grapesaur:
                 tempname = self.__getFullColumnPath(mcol)
                 finalfields.append("{} as {}".format(tempname, tempname.replace(".", "_")))
             finalfields = ", ".join(finalfields)
-        #searchfields process here
-        query = "select {} from df where array_contains({}, '{}')".format(finalfields, searchfield, searchquery)
+        dtype = self.__getDtype(searchfield, trueDf)
+        if dtype == 'string':
+            query = "select {} from df where {} == '{}'".format(finalfields, searchfield, searchquery)
+        else:
+            query = "select {} from df where array_contains({}, '{}')".format(finalfields, searchfield, searchquery)
         resultDf = self.sqlQuery(query)
-        self.showRows(df = resultDf, all=True, truncate = False)
+        self.showRows(df = resultDf, all = True, truncate = False)
     
     def flatten(self, df = None, parentColumn = None):
         if df == None:
@@ -275,7 +278,7 @@ class Grapesaur:
         print("Column Names: {}".format(", ".join(self.getColumnNames())))
         print("Column Count: {}".format(len(self.getColumnNames())))
         print("Total Rows: {}".format(self.df.count()))
-        # print("Total Duplicates by all Columns: {}".format(self.getDuplicateCount()))
+        # print("Total Duplicates by all Columns: {}".format(self.getDuplicateCount(columns = "addresses, provider, specialties, networks")))
         print('Tree view of the schema:')
         self.tree()
 
@@ -287,7 +290,6 @@ class Grapesaur:
         return self.spark.sql(fullquery)
 
     def getDuplicateCount(self, columns = None):
-        # optimize this
         df = self.df
         if columns != None:
             columns = [x.strip() for x in columns.split(',')]
