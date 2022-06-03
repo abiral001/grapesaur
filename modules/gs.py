@@ -136,7 +136,7 @@ class Grapesaur:
         else:
             print("No errors reported")
 
-    def readFile(self, fileName):
+    def readFile(self, fileName,default = False):
         self.fileName = fileName
         extension = self.__getFiletype(self.fileName)
         if self.error['status'] == False:
@@ -150,8 +150,11 @@ class Grapesaur:
                 return
         else:
             return
-        self.showError()
-        self.df = df
+        if default == True:
+            return df
+        else:
+            self.showError()
+            self.df = df
     
     def getColumnNames(self, colname = None, df = None):
         if df == "NA":
@@ -289,11 +292,12 @@ class Grapesaur:
         fullquery = query.replace('df', 'tempview')
         return self.spark.sql(fullquery)
 
-    def getDuplicateCount(self, columns = None):
-        df = self.df
+    def getDuplicate(self,count = True , columns = None , df = None):
+        if df == None:
+            df = self.df
         if columns != None:
             columns = [x.strip() for x in columns.split(',')]
-            self.flatten()
+            self.flatten(df)
             toDisplay = list()
             for onefield in columns:
                 tempCols = ""
@@ -311,17 +315,46 @@ class Grapesaur:
             df = self.sqlQuery(query)
         else:
             df = df.distinct()
-        noDuplicats = self.df.count() - df.count()
-        return noDuplicats
+        if count == True:
+            noDuplicats = self.df.count() - df.count()
+            return noDuplicats
+        else:
+            return df
 
-    def removeDuplicates(self):
-        # send to another just name this one readOnlyOperations and the other writeOperations
-        pass
+    def removeDuplicates(self,columns = None):
+        df = self.df
+        if columns != None:
+            columns = [x.strip() for x in columns.split(',')]
+            self.flatten()
+            toDisplay = list()
+            for onefield in columns:
+                tempCols = ""
+                for col in self.flatCols:
+                    col = col.split('.')
+                    if onefield in col:
+                        tempCols = col
+                        break
+                if tempCols == "":
+                    return "{} field not found".format(onefield)
+                tempcolnames = ".".join(tempCols)
+                toDisplay.append("{} as {}".format(tempcolnames, onefield))
+            toDisplay = ", ".join(toDisplay)
+            df =  df.dropDuplicates(toDisplay)
+        else:
+            df = df.dropDuplicates()
+        
+        count=self.getDuplicate(count=False)
+        print("Distinct count: "+str(df.count()))
+        self.showRows(all = True, truncate=False,df=count) 
+        
 
     def convertFile(self):
         # send to process
         pass
 
-    def compareTwoDatasets(self):
-        # send this to another module this module is already cluttered as is
-        pass
+    def compareTwoDatasets(self,old_df):
+        old = self.readFile(old_df, True)
+        new = self.df
+        difference =old.subtract(new)
+        self.showRows(all=True, df = difference,truncate= False )
+        print("Total Missing = {}".format(difference.count()))
