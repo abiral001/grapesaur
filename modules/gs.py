@@ -1,4 +1,5 @@
 from re import S
+from select import select
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
@@ -319,7 +320,8 @@ class Grapesaur:
             noDuplicats = self.df.count() - df.count()
             return noDuplicats
         else:
-            return df
+            # query = " select * from df1 where not exists (select * from df2 where df1 = df2)"
+            return self.df.exceptAll(df)
 
     def removeDuplicates(self,columns = None):
         df = self.df
@@ -348,13 +350,16 @@ class Grapesaur:
         self.showRows(all = True, truncate=False,df=count) 
         
 
-    def convertFile(self):
-        # send to process
-        pass
+    def convertFile(self, type, seperator):
+        convert= self.df
+        # print("New file name = {}".format(self.fileName.split('.')[0] + '.' + type))
+        # convert.repartition(1).write.csv(self.fileName.split('.')[0] + '.' + type,sep = seperator)
+        convert.coalesce(1).write.csv(self.fileName.split('.')[0] + '.' + type,sep = seperator)
+
 
     def compareTwoDatasets(self,old_df):
         old = self.readFile(old_df, True)
         new = self.df
-        difference =old.subtract(new)
+        difference =old.exceptAll(new)
         self.showRows(all=True, df = difference,truncate= False )
         print("Total Missing = {}".format(difference.count()))

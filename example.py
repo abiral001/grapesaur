@@ -5,11 +5,12 @@ from modules.__version__ import __version__
 if __name__ == "__main__":
 
     gs = Grapesaur(os.getcwd(), increaseMemory=True)
-    gs.readFile("vericred_bs_ca_promise_new_20220530.json")
+    gs.readFile("202205131550-amazon_best_sellers_reviews_lumenore_20220513.csv")
     #gs.compareTwoDatasets('vericred_christus_health_plan_20220316.json')
     # gs.removeDuplicates()
+    gs.convertFile('txt','|')
     # gs.showRows(1)
-    gs.showRows(colname = 'facility_name', truncate=False, all=True)
+    # gs.showRows(colname = 'facility_name', truncate=False, all=True)
     # print(gs.getColumnNames('networks'))
     # gs.showUniqueData('specialties.name')
     # gs.search('B08C1W5N87', searchfield='asin')
