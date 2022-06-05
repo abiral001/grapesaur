@@ -1,5 +1,3 @@
-from re import S
-from select import select
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
@@ -7,7 +5,15 @@ from pyspark.sql.types import *
 import os
 
 class Grapesaur:
+    """_summary_
+    """
     def __init__(self, DIR, increaseMemory = False):
+        """_summary_
+
+        Args:
+            DIR (_type_): _description_
+            increaseMemory (bool, optional): _description_. Defaults to False.
+        """
         self.DIR = DIR
         self.flatCols = list()
         if not increaseMemory:
@@ -29,10 +35,17 @@ class Grapesaur:
             self.__setError(2)
     
     def __del__(self):
+        """_summary_
+        """
         self.spark.stop()
         self.__setError(3)
 
     def __setError(self, status):
+        """_summary_
+
+        Args:
+            status (_type_): _description_
+        """
         if status == 0:
             self.error = {
                 'status': False,
@@ -69,8 +82,28 @@ class Grapesaur:
                 'message': "File not found",
                 'resolution': "Please place the file in the same directory as the main caller"
             }
+        elif status == 6:
+            self.error = {
+                'status': True,
+                'message': "Column name mismatch",
+                'resolution': "Please check the column names in thr tree view"
+            }
+        elif status == 7:
+            self.error = {
+                'status': True,
+                'message': "Parameter field name mismatch",
+                'resolution': "Please recheck the entered parameter"
+            }
 
     def __getFiletype(self, fileName):
+        """_summary_
+
+        Args:
+            fileName (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         if fileName in os.listdir(self.DIR):
             ext = fileName.split(".")
             ext = ext.pop().lower()
@@ -81,25 +114,49 @@ class Grapesaur:
             self.showError()
     
     def __getDtype(self, colname, df):
+        """_summary_
+
+        Args:
+            colname (_type_): _description_
+            df (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         if df == "NA":
+            self.__setError(2)
+            self.showError()
             return "Not Found"
+        self.__setError(0)
         fulldtype = [dtype for name, dtype in df.dtypes if name == colname]
         dtype = fulldtype[0].split('<').pop(0)
         return dtype
 
     def __searchTrueDF(self, colname, df):
+        """_summary_
+
+        Args:
+            colname (_type_): _description_
+            df (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         if "." in colname:
             cols = colname.split(".")
             for col in cols:
                 if self.__searchTrueDF(col, df) == "NA":
-                    print("Column name mismatch")
+                    self.__setError(6)
                     return "NA"
                 df = self.__searchTrueDF(col, df).select(col)
+            self.__setError(0)
             return df
         if colname in df.columns:
+            self.__setError(0)
             return df
         for col in df.columns:
             dt = self.__getDtype(col, df)
+            self.__setError(0)
             if 'struct' in dt:
                 tempCol = "{}.*".format(col)
                 newDF = df.select(tempCol)
@@ -112,9 +169,18 @@ class Grapesaur:
                 temp = self.__searchTrueDF(colname, df.select(explode(df[col])))
                 if temp != "NA" or df.columns.index(col) == (len(df.columns)-1):
                     return temp
+        self.__setError(6)
         return 'NA'
 
     def __getFullColumnPath(self, colname):
+        """_summary_
+
+        Args:
+            colname (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         if len(self.flatCols) == 0:
             self.flatten()
         actualcolname = None
@@ -132,12 +198,23 @@ class Grapesaur:
         return actualcolname
 
     def showError(self):
+        """_summary_
+        """
         if (self.error['status'] == True):
             print("Error {}, You can resolve the error by: {}".format(self.error['message'], self.error['resolution']))
         else:
             print("No errors reported")
 
     def readFile(self, fileName,default = False):
+        """_summary_
+
+        Args:
+            fileName (_type_): _description_
+            default (bool, optional): _description_. Defaults to False.
+
+        Returns:
+            _type_: _description_
+        """
         self.fileName = fileName
         extension = self.__getFiletype(self.fileName)
         if self.error['status'] == False:
@@ -158,8 +235,20 @@ class Grapesaur:
             self.df = df
     
     def getColumnNames(self, colname = None, df = None):
+        """_summary_
+
+        Args:
+            colname (_type_, optional): _description_. Defaults to None.
+            df (_type_, optional): _description_. Defaults to None.
+
+        Returns:
+            _type_: _description_
+        """
         if df == "NA":
+            self.__setError(6)
+            self.showError()
             return "No column named {} found".format(colname)
+        self.__setError(0)
         if df == None:
             df = self.df
         if colname == None:
@@ -182,6 +271,16 @@ class Grapesaur:
                 return self.getColumnNames(colname, self.__searchTrueDF(colname, df))
 
     def showRows(self, no = 20, vertical = False, truncate = True, colname = None, df = None, all = False):
+        """_summary_
+
+        Args:
+            no (int, optional): _description_. Defaults to 20.
+            vertical (bool, optional): _description_. Defaults to False.
+            truncate (bool, optional): _description_. Defaults to True.
+            colname (_type_, optional): _description_. Defaults to None.
+            df (_type_, optional): _description_. Defaults to None.
+            all (bool, optional): _description_. Defaults to False.
+        """
         if df == None:
             df = self.df
         if colname == None:
@@ -198,14 +297,23 @@ class Grapesaur:
             else:
                 df = self.__searchTrueDF(colname, df)
                 if df == "NA":
-                    print("No column named {} found".format(colname))
+                    self.__setError(6)
+                    self.showError()
                 else:
+                    self.__setError(0)
                     if not all:
                         df.select(colname).show(no, vertical=vertical, truncate=truncate)
                     else:
                         df.select(colname).show(df.select(colname).count(), vertical=vertical, truncate=truncate)
     
     def showUniqueData(self, colname, df = None, desc = True):
+        """_summary_
+
+        Args:
+            colname (_type_): _description_
+            df (_type_, optional): _description_. Defaults to None.
+            desc (bool, optional): _description_. Defaults to True.
+        """
         if df == None:
             df = self.df
         if "." in colname:
@@ -228,15 +336,28 @@ class Grapesaur:
             self.showRows(all=True, truncate = False, df=df)
 
     def tree(self):
+        """_summary_
+        """
         self.df.printSchema()
 
     def search(self, searchquery=None, searchfield=None, displayfields = None, show = True, df = None):
+        """_summary_
+
+        Args:
+            searchquery (_type_, optional): _description_. Defaults to None.
+            searchfield (_type_, optional): _description_. Defaults to None.
+            displayfields (_type_, optional): _description_. Defaults to None.
+            show (bool, optional): _description_. Defaults to True.
+            df (_type_, optional): _description_. Defaults to None.
+        """
         if df == None:
             df = self.df
         trueDf = self.__searchTrueDF(searchfield, df)
         if trueDf == "NA":
-            print("searchfield not found in the data schema")
+            self.__setError(7)
+            self.showError()
             return
+        self.__setError(0)
         self.flatten()
         if displayfields == None:
             finalfields = "*"
@@ -257,6 +378,12 @@ class Grapesaur:
         self.showRows(df = resultDf, all = True, truncate = False)
     
     def flatten(self, df = None, parentColumn = None):
+        """_summary_
+
+        Args:
+            df (_type_, optional): _description_. Defaults to None.
+            parentColumn (_type_, optional): _description_. Defaults to None.
+        """
         if df == None:
             df = self.df
         for colname in df.columns:
@@ -277,6 +404,8 @@ class Grapesaur:
                     self.flatCols.append(parentColumn+"."+subcols)
 
     def summary(self):
+        """_summary_
+        """
         print("File selected = {}".format(self.fileName))
         print("="*(20+len(self.fileName)))
         print("Column Names: {}".format(", ".join(self.getColumnNames())))
@@ -287,13 +416,32 @@ class Grapesaur:
         self.tree()
 
     def sqlQuery(self, query, df = None):
+        """_summary_
+
+        Args:
+            query (_type_): _description_
+            df (_type_, optional): _description_. Defaults to None.
+
+        Returns:
+            _type_: _description_
+        """
         if df == None:
             df = self.df
         df.createOrReplaceTempView('tempview')
         fullquery = query.replace('df', 'tempview')
         return self.spark.sql(fullquery)
 
-    def getDuplicate(self,count = True , columns = None , df = None):
+    def getDuplicates(self,count = True , columns = None , df = None):
+        """_summary_
+
+        Args:
+            count (bool, optional): _description_. Defaults to True.
+            columns (_type_, optional): _description_. Defaults to None.
+            df (_type_, optional): _description_. Defaults to None.
+
+        Returns:
+            _type_: _description_
+        """
         if df == None:
             df = self.df
         if columns != None:
@@ -308,7 +456,9 @@ class Grapesaur:
                         tempCols = col
                         break
                 if tempCols == "":
-                    return "{} field not found".format(onefield)
+                    self.__setError(6)
+                    self.showError()
+                    return
                 tempcolnames = ".".join(tempCols)
                 toDisplay.append("{} as {}".format(tempcolnames, onefield))
             toDisplay = ", ".join(toDisplay)
@@ -324,6 +474,11 @@ class Grapesaur:
             return self.df.exceptAll(df)
 
     def removeDuplicates(self,columns = None):
+        """_summary_
+
+        Args:
+            columns (_type_, optional): _description_. Defaults to None.
+        """
         df = self.df
         if columns != None:
             columns = [x.strip() for x in columns.split(',')]
@@ -337,29 +492,39 @@ class Grapesaur:
                         tempCols = col
                         break
                 if tempCols == "":
-                    return "{} field not found".format(onefield)
+                    self.__setError(6)
+                    self.showError()
+                    return
                 tempcolnames = ".".join(tempCols)
                 toDisplay.append("{} as {}".format(tempcolnames, onefield))
             toDisplay = ", ".join(toDisplay)
             df =  df.dropDuplicates(toDisplay)
         else:
             df = df.dropDuplicates()
-        
-        count=self.getDuplicate(count=False)
+        count=self.getDuplicates(count=False)
         print("Distinct count: "+str(df.count()))
-        self.showRows(all = True, truncate=False,df=count) 
-        
+        self.showRows(all = True, truncate=False, df=count)   
 
-    def convertFile(self, type, seperator):
-        convert= self.df
+    def convertFile(self, type, separator):
+        """_summary_
+
+        Args:
+            type (_type_): _description_
+            separator (_type_): _description_
+        """
+        convert = self.df
         # print("New file name = {}".format(self.fileName.split('.')[0] + '.' + type))
         # convert.repartition(1).write.csv(self.fileName.split('.')[0] + '.' + type,sep = seperator)
-        convert.coalesce(1).write.csv(self.fileName.split('.')[0] + '.' + type,sep = seperator)
-
+        convert.coalesce(1).write.csv(self.fileName.split('.')[0] + '.' + type, sep = separator)
 
     def compareTwoDatasets(self,old_df):
+        """_summary_
+
+        Args:
+            old_df (_type_): _description_
+        """
         old = self.readFile(old_df, True)
         new = self.df
-        difference =old.exceptAll(new)
-        self.showRows(all=True, df = difference,truncate= False )
+        difference = old.exceptAll(new)
+        self.showRows(all=True, df = difference, truncate= False )
         print("Total Missing = {}".format(difference.count()))

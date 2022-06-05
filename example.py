@@ -4,7 +4,7 @@ from modules.__version__ import __version__
 
 if __name__ == "__main__":
 
-    gs = Grapesaur(os.getcwd(), increaseMemory=True)
+    gs = Grapesaur(os.getcwd(), increaseMemory=False)
     gs.readFile("202205131550-amazon_best_sellers_reviews_lumenore_20220513.csv")
     #gs.compareTwoDatasets('vericred_christus_health_plan_20220316.json')
     # gs.removeDuplicates()
