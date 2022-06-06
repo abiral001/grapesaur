@@ -1,3 +1,4 @@
+from unittest import result
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
@@ -5,14 +6,14 @@ from pyspark.sql.types import *
 import os
 
 class Grapesaur:
-    """_summary_
+    """Used for processing datasets using pyspark
     """
     def __init__(self, DIR, increaseMemory = False):
-        """_summary_
+        """constructor for Grapesaur
 
         Args:
-            DIR (_type_): _description_
-            increaseMemory (bool, optional): _description_. Defaults to False.
+            DIR (_type_): Default directory from which datasets can be pulled
+            increaseMemory (bool, optional): Flag to either use default 2G of RAM(False) or higher 10G(True). Defaults to False.
         """
         self.DIR = DIR
         self.flatCols = list()
@@ -35,16 +36,16 @@ class Grapesaur:
             self.__setError(2)
     
     def __del__(self):
-        """_summary_
+        """Destructor for Grapesaur
         """
         self.spark.stop()
         self.__setError(3)
 
     def __setError(self, status):
-        """_summary_
+        """Internal function that sets different error at different program execution step
 
         Args:
-            status (_type_): _description_
+            status (int): Denotes the error code
         """
         if status == 0:
             self.error = {
@@ -94,19 +95,26 @@ class Grapesaur:
                 'message': "Parameter field name mismatch",
                 'resolution': "Please recheck the entered parameter"
             }
+        elif status == 8:
+            self.error = {
+                'status': True,
+                'message': 'Only CSV files are supported for conversion',
+                'resolution': 'Please supply a csv file'
+            }
 
     def __getFiletype(self, fileName):
-        """_summary_
+        """Internal Function that is used to get the file extension of the supplied file
 
         Args:
-            fileName (_type_): _description_
+            fileName (string): Filename in the same directory as example.py
 
         Returns:
-            _type_: _description_
+            string: Extension of the file
         """
         if fileName in os.listdir(self.DIR):
             ext = fileName.split(".")
             ext = ext.pop().lower()
+            self.ext = ext
             self.__setError(0)
             return ext
         else:
@@ -114,14 +122,14 @@ class Grapesaur:
             self.showError()
     
     def __getDtype(self, colname, df):
-        """_summary_
+        """Internal Function to obtain the type of data stored in a particular column of the dataset
 
         Args:
-            colname (_type_): _description_
-            df (_type_): _description_
+            colname (string): The name of column which exists in the dataset
+            df (spark.df): The dataframe under observation
 
         Returns:
-            _type_: _description_
+            string: The type of data stored in the colname column of the dataset
         """
         if df == "NA":
             self.__setError(2)
@@ -133,14 +141,13 @@ class Grapesaur:
         return dtype
 
     def __searchTrueDF(self, colname, df):
-        """_summary_
-
+        """Internal recursion function which is used to return the dataframe which contains the colname as column. The column can be in any level of the dataframe
         Args:
-            colname (_type_): _description_
-            df (_type_): _description_
+            colname (string): The column to search in the dataframe
+            df (spark.df): The dataframe to search the column in
 
         Returns:
-            _type_: _description_
+            spark.df: The immediate dataframe which contains colname as one of its column
         """
         if "." in colname:
             cols = colname.split(".")
@@ -173,13 +180,13 @@ class Grapesaur:
         return 'NA'
 
     def __getFullColumnPath(self, colname):
-        """_summary_
+        """Intenal function which return the full path to get the required column name in the default dataframe
 
         Args:
-            colname (_type_): _description_
+            colname (string): The column name to return the full path of
 
         Returns:
-            _type_: _description_
+            string: The full path to the colname column
         """
         if len(self.flatCols) == 0:
             self.flatten()
@@ -198,22 +205,22 @@ class Grapesaur:
         return actualcolname
 
     def showError(self):
-        """_summary_
+        """Function to return the set error
         """
         if (self.error['status'] == True):
             print("Error {}, You can resolve the error by: {}".format(self.error['message'], self.error['resolution']))
         else:
             print("No errors reported")
 
-    def readFile(self, fileName,default = False):
-        """_summary_
+    def readFile(self, fileName, default = False):
+        """Function that reads the dataset into spark dataframe
 
         Args:
-            fileName (_type_): _description_
-            default (bool, optional): _description_. Defaults to False.
+            fileName (string): The name of the dataset
+            default (bool, optional): Flag which denotes whether to return the dataframe(True) or not(False). Defaults to False.
 
         Returns:
-            _type_: _description_
+            spark.df or None: Returns the read dataframe if default flag is set
         """
         self.fileName = fileName
         extension = self.__getFiletype(self.fileName)
@@ -228,21 +235,22 @@ class Grapesaur:
                 return
         else:
             return
+        self.__setError(0)
+        self.showError()
         if default == True:
             return df
         else:
-            self.showError()
             self.df = df
     
     def getColumnNames(self, colname = None, df = None):
-        """_summary_
+        """Function to get all the column names of the provided df
 
         Args:
-            colname (_type_, optional): _description_. Defaults to None.
-            df (_type_, optional): _description_. Defaults to None.
+            colname (string, optional): If supplied searches the dataframe for this column and returns all the column names inside this column. Defaults to None.
+            df (_type_, optional): Optionally can denote which dataframe to start searching on. Defaults to None.
 
         Returns:
-            _type_: _description_
+            list: Column names
         """
         if df == "NA":
             self.__setError(6)
@@ -271,15 +279,15 @@ class Grapesaur:
                 return self.getColumnNames(colname, self.__searchTrueDF(colname, df))
 
     def showRows(self, no = 20, vertical = False, truncate = True, colname = None, df = None, all = False):
-        """_summary_
+        """Function to display the rows
 
         Args:
-            no (int, optional): _description_. Defaults to 20.
-            vertical (bool, optional): _description_. Defaults to False.
-            truncate (bool, optional): _description_. Defaults to True.
-            colname (_type_, optional): _description_. Defaults to None.
-            df (_type_, optional): _description_. Defaults to None.
-            all (bool, optional): _description_. Defaults to False.
+            no (int, optional): How many rows to display?. Defaults to 20.
+            vertical (bool, optional): Should the rows be displayed vertically, one at a time?. Defaults to False.
+            truncate (bool, optional): Should the table contain only the first few characters of the data in the field?. Defaults to True.
+            colname (_type_, optional): Should only particular column be displayed?. Defaults to None.
+            df (_type_, optional): Where to display data from?. Defaults to None.
+            all (bool, optional): Should all data be displayed?. Defaults to False.
         """
         if df == None:
             df = self.df
@@ -307,12 +315,12 @@ class Grapesaur:
                         df.select(colname).show(df.select(colname).count(), vertical=vertical, truncate=truncate)
     
     def showUniqueData(self, colname, df = None, desc = True):
-        """_summary_
+        """Function to display only unique data from a particular column with the number of times this data is recurrent in the dataset
 
         Args:
-            colname (_type_): _description_
-            df (_type_, optional): _description_. Defaults to None.
-            desc (bool, optional): _description_. Defaults to True.
+            colname (_type_): The column to collect data on
+            df (_type_, optional): Which dataset to check the column on?. Defaults to None.
+            desc (bool, optional): Should the data returned be arranged in descending order?. Defaults to True.
         """
         if df == None:
             df = self.df
@@ -336,19 +344,22 @@ class Grapesaur:
             self.showRows(all=True, truncate = False, df=df)
 
     def tree(self):
-        """_summary_
+        """Simple function to show the nested columns in the dataset
         """
         self.df.printSchema()
 
     def search(self, searchquery=None, searchfield=None, displayfields = None, show = True, df = None):
-        """_summary_
+        """A powerful function which can search the dataset for any data in any field supplied
 
         Args:
-            searchquery (_type_, optional): _description_. Defaults to None.
-            searchfield (_type_, optional): _description_. Defaults to None.
-            displayfields (_type_, optional): _description_. Defaults to None.
-            show (bool, optional): _description_. Defaults to True.
-            df (_type_, optional): _description_. Defaults to None.
+            searchquery (string, optional): What to search?. Defaults to None.
+            searchfield (string, optional): Which field to search? Please supply the columns with full column path separating each column name with "." PS: Use flatten to get self.flatCols. Defaults to None.
+            displayfields (string, optional): Which fields to display from the search results?. Defaults to None.
+            show (bool, optional): Should the data be displayed or just the searched data be returned in a dataframe. Defaults to True.
+            df (spark.df, optional): Where to search data in?. Defaults to None.
+        
+        Returns:
+            None or spark.df: Returns nothing or the searched dataframe
         """
         if df == None:
             df = self.df
@@ -375,14 +386,17 @@ class Grapesaur:
         else:
             query = "select {} from df where array_contains({}, '{}')".format(finalfields, searchfield, searchquery)
         resultDf = self.sqlQuery(query)
-        self.showRows(df = resultDf, all = True, truncate = False)
+        if show:
+            self.showRows(df = resultDf, all = True, truncate = False)
+        else:
+            return resultDf
     
     def flatten(self, df = None, parentColumn = None):
-        """_summary_
+        """Recursive function to populate the internal flatfields with the column name required for search function
 
         Args:
-            df (_type_, optional): _description_. Defaults to None.
-            parentColumn (_type_, optional): _description_. Defaults to None.
+            df (spark.df, optional): The dataframe to use the flatten on. Defaults to None.
+            parentColumn (string, optional): Just a variable to be used during recursion to store the proper column name. Defaults to None.
         """
         if df == None:
             df = self.df
@@ -404,7 +418,7 @@ class Grapesaur:
                     self.flatCols.append(parentColumn+"."+subcols)
 
     def summary(self):
-        """_summary_
+        """As the name specifies summary
         """
         print("File selected = {}".format(self.fileName))
         print("="*(20+len(self.fileName)))
@@ -416,14 +430,14 @@ class Grapesaur:
         self.tree()
 
     def sqlQuery(self, query, df = None):
-        """_summary_
+        """Can process sql query directly but only for one dataframe for now
 
         Args:
-            query (_type_): _description_
-            df (_type_, optional): _description_. Defaults to None.
+            query (string): SQL Query. Use df for name for the table
+            df (spark.df, optional): The dataframe to process the query on. Defaults to None.
 
         Returns:
-            _type_: _description_
+            spark.df: Dataframe obtained after running the query
         """
         if df == None:
             df = self.df
@@ -432,15 +446,15 @@ class Grapesaur:
         return self.spark.sql(fullquery)
 
     def getDuplicates(self,count = True , columns = None , df = None):
-        """_summary_
+        """Function to get the duplicates, either count or the actual duplicates encountered in the dataset
 
         Args:
-            count (bool, optional): _description_. Defaults to True.
-            columns (_type_, optional): _description_. Defaults to None.
-            df (_type_, optional): _description_. Defaults to None.
+            count (bool, optional): Should only the number of duplicates be returned?. Defaults to True.
+            columns (string, optional): Which columns to use to check for duplicates?. Defaults to None.
+            df (spark.df, optional): Where to check duplicates on?. Defaults to None.
 
         Returns:
-            _type_: _description_
+            int or spark.df: Duplicate count or full dataframe of duplicates
         """
         if df == None:
             df = self.df
@@ -473,11 +487,11 @@ class Grapesaur:
             # query = " select * from df1 where not exists (select * from df2 where df1 = df2)"
             return self.df.exceptAll(df)
 
-    def removeDuplicates(self,columns = None):
-        """_summary_
+    def removeDuplicates(self, columns = None):
+        """Function to remove the duplicates from the dataset and display the duplicates removed
 
         Args:
-            columns (_type_, optional): _description_. Defaults to None.
+            columns (string, optional): Columns to check for duplicates. Defaults to None.
         """
         df = self.df
         if columns != None:
@@ -506,22 +520,26 @@ class Grapesaur:
         self.showRows(all = True, truncate=False, df=count)   
 
     def convertFile(self, type, separator):
-        """_summary_
+        """Function to convert the file type of supplied dataframe (ONly for csv)
 
         Args:
-            type (_type_): _description_
-            separator (_type_): _description_
+            type (string): Extension of the file to be the output
+            separator (char): What should be the separater for the file?
         """
+        if self.ext != 'csv':
+            self.__setError(8)
+            self.showError()
+            return
         convert = self.df
         # print("New file name = {}".format(self.fileName.split('.')[0] + '.' + type))
         # convert.repartition(1).write.csv(self.fileName.split('.')[0] + '.' + type,sep = seperator)
         convert.coalesce(1).write.csv(self.fileName.split('.')[0] + '.' + type, sep = separator)
 
-    def compareTwoDatasets(self,old_df):
-        """_summary_
+    def compareTwoDatasets(self, old_df):
+        """Function to display missing data from new dataset which exists in old dataset
 
         Args:
-            old_df (_type_): _description_
+            old_df (spark.df): The old dataset to compare
         """
         old = self.readFile(old_df, True)
         new = self.df
