@@ -5,7 +5,7 @@ from pyspark.sql.types import *
 
 import os
 
-class Grapesaur:
+class GDataAnalysis:
     """Used for processing datasets using pyspark
     """
     def __init__(self, DIR, increaseMemory = False):
