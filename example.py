@@ -7,22 +7,23 @@ if __name__ == "__main__":
     gs = GDataAnalysis(os.getcwd(), increaseMemory=False)
 
     # Read File : this is a dummy file
-    gs.readFile("insight2profit_nrs_world_20220607.csv")
+    gs.readFile("202206061118-shentel_com_20220606.csv")
 
     # Get Column Names
-    # print(gs.getColumnNames('networks'))
+    # print(gs.getColumnNames())
 
     # Show Rows
-    # gs.showRows(colname = 'facility_name', truncate=False, all=True)
+    # gs.showRows(truncate=False, all=True)
 
     # Show data count of unique data
-    # gs.showUniqueData('Size')
+    # gs.showUniqueData('Zip')
 
     # Tree view of the dataset
     # gs.tree()
 
     # Search for a particular data inside the dataset
-    # gs.search('B08C1W5N87', searchfield='asin')
+    # gs.search('Richwood', searchfield='City')
+    # gs.search('Richwood', searchfield='City', displayfields='Unit, Address')
 
     # Get Column names to be used in search function
     # gs.flatten()
@@ -32,7 +33,7 @@ if __name__ == "__main__":
     # gs.summary()
 
     # Run the SQL directly (use df instead of table name)
-    # gs.sqlQuery('select * from df')
+    # gs.showRows(all=True, truncate = False, df = gs.sqlQuery('select Unit from df'))
 
     # Get the duplicates
     # gs.getDuplicates(count = True)
