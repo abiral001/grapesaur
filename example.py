@@ -7,7 +7,7 @@ if __name__ == "__main__":
     gs = GDataAnalysis(os.getcwd(), increaseMemory=False)
 
     # Read File : this is a dummy file
-    # gs.readFile("202205131550-amazon_best_sellers_reviews_lumenore_20220513.csv")
+    gs.readFile("insight2profit_nrs_world_20220607.csv")
 
     # Get Column Names
     # print(gs.getColumnNames('networks'))
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     # gs.showRows(colname = 'facility_name', truncate=False, all=True)
 
     # Show data count of unique data
-    # gs.showUniqueData('specialties.name')
+    # gs.showUniqueData('Size')
 
     # Tree view of the dataset
     # gs.tree()
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     # print(gs.flatCols)
 
     # Summary of data
-    gs.summary()
+    # gs.summary()
 
     # Run the SQL directly (use df instead of table name)
     # gs.sqlQuery('select * from df')

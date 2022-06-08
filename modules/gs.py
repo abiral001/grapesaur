@@ -9,7 +9,7 @@ class GDataAnalysis:
     """Used for processing datasets using pyspark
     """
     def __init__(self, DIR, increaseMemory = False):
-        """constructor for Grapesaur
+        """constructor for GDA
 
         Args:
             DIR (_type_): Default directory from which datasets can be pulled
@@ -19,7 +19,7 @@ class GDataAnalysis:
         self.flatCols = list()
         if not increaseMemory:
             try:
-                self.spark = SparkSession.builder.appName("Grapesaur").getOrCreate()
+                self.spark = SparkSession.builder.appName("GDA").getOrCreate()
                 self.spark.sparkContext.setLogLevel("ERROR")
             except:
                 self.__setError(1)
@@ -28,7 +28,7 @@ class GDataAnalysis:
             try:
                 self.spark = SparkSession.builder \
                     .config("spark.driver.memory", "10g") \
-                    .appName("Grapesaur") \
+                    .appName("GDA") \
                     .getOrCreate()
                 self.spark.sparkContext.setLogLevel("ERROR")
             except:
@@ -36,7 +36,7 @@ class GDataAnalysis:
             self.__setError(2)
     
     def __del__(self):
-        """Destructor for Grapesaur
+        """Destructor for GDA
         """
         self.spark.stop()
         self.__setError(3)

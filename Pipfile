@@ -10,6 +10,7 @@ pandas = "*"
 matplotlib = "*"
 findspark = "*"
 jupyterlab = "*"
+openpyxl = "*"
 
 [dev-packages]
 
