@@ -3,6 +3,11 @@ from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
 import os
+import sys
+
+sys.path.append('.')
+
+from modules.error import Error
 
 class GDataAnalysis:
     """Used for processing datasets using pyspark
@@ -16,6 +21,7 @@ class GDataAnalysis:
         """
         self.DIR = DIR
         self.flatCols = list()
+        self.err = Error()
         if not increaseMemory:
             try:
                 self.spark = SparkSession.builder.appName("GDA").getOrCreate()
@@ -46,60 +52,7 @@ class GDataAnalysis:
         Args:
             status (int): Denotes the error code
         """
-        if status == 0:
-            self.error = {
-                'status': False,
-                'message': "No errors reported",
-                'resolution': "Nothing to do"
-            }
-        elif status == 1:
-            self.error = {
-                'status': True,
-                'message': "PySpark failed to initialize",
-                'resolution': "Please check the install path for PySpark"
-            }
-        elif status == 2:
-            self.error = {
-                'status': True,
-                'message': "No dataset provided",
-                'resolution': "Please provide data using readFile(...)"
-            }
-        elif status == 3:
-            self.error = {
-                'status': True,
-                'message': "Pyspark is not initialized",
-                'resolution': "Please restart the application"
-            }
-        elif status == 4:
-            self.error = {
-                'status': True,
-                'message': "File type not supported",
-                'resolution': "Please contact developer for the required dataset type"
-            }
-        elif status == 5:
-            self.error = {
-                'status': True,
-                'message': "File not found",
-                'resolution': "Please place the file in the same directory as the main caller"
-            }
-        elif status == 6:
-            self.error = {
-                'status': True,
-                'message': "Column name mismatch",
-                'resolution': "Please check the column names in thr tree view"
-            }
-        elif status == 7:
-            self.error = {
-                'status': True,
-                'message': "Parameter field name mismatch",
-                'resolution': "Please recheck the entered parameter"
-            }
-        elif status == 8:
-            self.error = {
-                'status': True,
-                'message': 'Only CSV files are supported for conversion',
-                'resolution': 'Please supply a csv file'
-            }
+        self.err.setError(status)
 
     def __getFiletype(self, fileName):
         """Internal Function that is used to get the file extension of the supplied file
@@ -130,7 +83,7 @@ class GDataAnalysis:
         Returns:
             string: The type of data stored in the colname column of the dataset
         """
-        if df == "NA":
+        if df == None:
             self.__setError(2)
             self.showError()
             return "Not Found"
@@ -149,15 +102,25 @@ class GDataAnalysis:
             spark.df: The immediate dataframe which contains colname as one of its column
         """
         if "." in colname:
-            cols = colname.split(".")
-            for col in cols:
-                if self.__searchTrueDF(col, df) == "NA":
+            allCols = colname.split('.')
+            for idx, col in enumerate(allCols):
+                if idx == len(allCols)-1:
+                    break
+                df = self.__searchTrueDF(colname = col, df = df)
+                if df == "NA":
                     self.__setError(6)
                     return "NA"
-                df = self.__searchTrueDF(col, df).select(col)
             self.__setError(0)
             return df
         if colname in df.columns:
+            dt = self.__getDtype(colname = colname, df = df)
+            if 'struct' in dt:
+                colname = "{}.*".format(colname)
+                df = df.select(colname)
+            elif 'string' in dt:
+                df = df.select(colname)
+            elif 'array' in dt:
+                df = self.__searchTrueDF(colname, df.select(explode(df[colname]).alias(colname)))
             self.__setError(0)
             return df
         for col in df.columns:
@@ -168,15 +131,18 @@ class GDataAnalysis:
                 newDF = df.select(tempCol)
                 newcols = newDF.columns
                 if colname in newcols:
+                    self.__setError(0)
                     return newDF
                 else:
                     return self.__searchTrueDF(colname, newDF)
             elif 'array' in dt:
                 temp = self.__searchTrueDF(colname, df.select(explode(df[col])))
                 if temp != "NA" or df.columns.index(col) == (len(df.columns)-1):
+                    self.__setError(0)
                     return temp
         self.__setError(6)
-        return 'NA'
+        return "NA"
+        
 
     def __getFullColumnPath(self, colname):
         """Intenal function which return the full path to get the required column name in the default dataframe
@@ -206,10 +172,7 @@ class GDataAnalysis:
     def showError(self):
         """Function to return the set error
         """
-        if (self.error['status'] == True):
-            print("Error {}, You can resolve the error by: {}".format(self.error['message'], self.error['resolution']))
-        else:
-            print("No errors reported")
+        self.err.showError()
 
     def readFile(self, fileName, default = False):
         """Function that reads the dataset into spark dataframe
@@ -223,7 +186,7 @@ class GDataAnalysis:
         """
         self.fileName = fileName
         extension = self.__getFiletype(self.fileName)
-        if self.error['status'] == False:
+        if self.err.error['status'] == False:
             if extension == "json" or extension == "jl":
                 df = self.spark.read.json(self.fileName)
             elif extension == "csv":
@@ -313,7 +276,7 @@ class GDataAnalysis:
                     else:
                         df.select(colname).show(df.select(colname).count(), vertical=vertical, truncate=truncate)
     
-    def showUniqueData(self, colname, df = None, desc = True):
+    def showUniqueData(self, colname, df = None, desc = True, returnDf = False):
         """Function to display only unique data from a particular column with the number of times this data is recurrent in the dataset
 
         Args:
@@ -333,19 +296,27 @@ class GDataAnalysis:
         if dt == "struct":
             colname = "{}.*".format(colname)
             df = df.select(colname)
-            self.showRows(all=True, truncate = True, df=df)
+            if returnDf == True:
+                return df
+            else:
+                self.showRows(all=True, truncate = True, df=df)
         else:
             df = df.select(colname)
             if desc:
                 df = df.groupby(colname).count().orderBy(col('count').desc())
             else:
                 df = df.groupby(colname).count().orderBy(col('count'))
-            self.showRows(all=True, truncate = False, df=df)
+            if returnDf == True:
+                return df
+            else:
+                self.showRows(all=True, truncate = False, df=df)
 
-    def tree(self):
+    def tree(self, df = None):
         """Simple function to show the nested columns in the dataset
         """
-        self.df.printSchema()
+        if df == None:
+            df = self.df
+        df.printSchema()
 
     def search(self, searchquery=None, searchfield=None, displayfields = None, show = True, df = None):
         """A powerful function which can search the dataset for any data in any field supplied
@@ -416,15 +387,61 @@ class GDataAnalysis:
                 else:
                     self.flatCols.append(parentColumn+"."+subcols)
 
-    def summary(self):
+    def summary(self, stat = False):
         """As the name specifies summary
         """
         print("File selected = {}".format(self.fileName))
         print("="*(20+len(self.fileName)))
         print("Column Names: {}".format(", ".join(self.getColumnNames())))
         print("Column Count: {}".format(len(self.getColumnNames())))
-        print("Total Rows: {}".format(self.df.count()))
-        # print("Total Duplicates by all Columns: {}".format(self.getDuplicateCount(columns = "addresses, provider, specialties, networks")))
+        totalCount = self.df.count()
+        print("Total Rows: {}".format(totalCount))
+        if stat == True:
+            print("Stats: Null Count in each column")
+            self.flatten()
+            columns = self.flatCols
+            fullStats = list()
+            for col in columns:
+                try:
+                    full = self.showUniqueData(col, returnDf = True)
+                    cols = self.getColumnNames(df = full)
+                    query = "select * from df where {} is null".format(cols[0])
+                    temp = self.sqlQuery(query, df = full)
+                    if temp.count() == 0:
+                        data = {
+                            "Column Name": "{}".format(col),
+                            "Null Count": 0,
+                            "Non-null Count": totalCount,
+                            "Status": "No null found here"
+                        }
+                        fullStats.append(data)
+                    else:
+                        row = temp.collect()[0]
+                        data = {
+                            "Column Name": "{}".format(col),
+                            "Null Count": row['count'],
+                            "Non-null Count": totalCount - row['count'],
+                            "Status": "Field could be partially null"
+                        }
+                        fullStats.append(data)
+                except:
+                    data = {
+                        "Column Name": "{}".format(col),
+                        "Null Count": totalCount,
+                        "Non-null Count": 0,
+                        "Status": "Field is fully empty"
+                    }
+                    fullStats.append(data)
+            rdd = self.spark.sparkContext.parallelize(fullStats)
+            newcols = [
+                StructField('Column Name', StringType(), True), 
+                StructField('Null Count', IntegerType(), True), 
+                StructField('Non-null Count', IntegerType(), True),
+                StructField('Status', StringType(), True),
+            ]
+            dfcolumns = StructType(newcols)
+            new_df = self.spark.createDataFrame(data = rdd, schema=dfcolumns)
+            self.showRows(all = True, df = new_df, truncate=False)
         print('Tree view of the schema:')
         self.tree()
 
