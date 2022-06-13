@@ -410,11 +410,14 @@ class GDataAnalysis:
                     cols = self.getColumnNames(df = full)
                     query = "select * from df where {} is null".format(cols[0])
                     temp = self.sqlQuery(query, df = full)
+                    query = "select sum(count) from df"
+                    total = self.sqlQuery(query, df = full)
+                    total = total.collect()[0]['sum(count)']
                     if temp.count() == 0:
                         data = {
                             "Column Name": "{}".format(col),
                             "Null Count": 0,
-                            "Non-null Count": totalCount,
+                            "Non-null Count": total,
                             "Status": "No null found here"
                         }
                         fullStats.append(data)
@@ -423,7 +426,7 @@ class GDataAnalysis:
                         data = {
                             "Column Name": "{}".format(col),
                             "Null Count": row['count'],
-                            "Non-null Count": totalCount - row['count'],
+                            "Non-null Count": total - row['count'],
                             "Status": "Field could be partially null"
                         }
                         fullStats.append(data)

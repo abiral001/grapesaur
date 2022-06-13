@@ -30,13 +30,13 @@ if __name__ == "__main__":
     # print(gs.flatCols)
 
     # Summary of data
-    # gs.summary(stat = True)
+    gs.summary(stat = True)
 
     # Run the SQL directly (use df instead of table name)
     # gs.showRows(all=True, truncate = False, df = gs.sqlQuery('select Unit from df'))
 
     # Get the duplicates
-    gs.showRows(df = gs.getDuplicates(count = False), no = 2)
+    # gs.showRows(df = gs.getDuplicates(count = False), no = 2)
 
     # Convert file (works with only CSV)
     # gs.convertFile('csv', "|")
