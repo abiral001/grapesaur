@@ -23,20 +23,20 @@ if __name__ == "__main__":
 
     # Search for a particular data inside the dataset
     # gs.search('null', searchfield='Unit')
-    # gs.search('Optumrx', searchfield='providers.unparsed_name')
+    # gs.search('Aaron', searchfield='provider.unparsed_name', displayfields='address_string')
 
     # Get Column names to be used in search function
     # gs.flatten()
     # print(gs.flatCols)
 
     # Summary of data
-    gs.summary(stat = True)
+    # gs.summary(stat = True)
 
     # Run the SQL directly (use df instead of table name)
     # gs.showRows(all=True, truncate = False, df = gs.sqlQuery('select Unit from df'))
 
     # Get the duplicates
-    # gs.getDuplicates(count = True)
+    gs.showRows(df = gs.getDuplicates(count = False), no = 2)
 
     # Convert file (works with only CSV)
     # gs.convertFile('csv', "|")

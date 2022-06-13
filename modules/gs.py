@@ -88,6 +88,8 @@ class GDataAnalysis:
             self.showError()
             return "Not Found"
         self.__setError(0)
+        if "." in colname:
+            colname = colname.split(".").pop()
         fulldtype = [dtype for name, dtype in df.dtypes if name == colname]
         dtype = fulldtype[0].split('<').pop(0)
         return dtype
@@ -352,9 +354,10 @@ class GDataAnalysis:
             finalfields = ", ".join(finalfields)
         dtype = self.__getDtype(searchfield, trueDf)
         if dtype == 'string':
-            query = "select {} from df where {} == '{}'".format(finalfields, searchfield, searchquery)
+            query = "select {} from df where {} rlike '{}'".format(finalfields, searchfield, searchquery)
         else:
             query = "select {} from df where array_contains({}, '{}')".format(finalfields, searchfield, searchquery)
+        print(query)
         resultDf = self.sqlQuery(query)
         if show:
             self.showRows(df = resultDf, all = True, truncate = False)
