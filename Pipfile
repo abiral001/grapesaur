@@ -11,6 +11,7 @@ matplotlib = "*"
 findspark = "*"
 jupyterlab = "*"
 openpyxl = "*"
+xlsx2csv = "*"
 
 [dev-packages]
 

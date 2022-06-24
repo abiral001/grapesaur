@@ -4,6 +4,9 @@ from pyspark.sql.types import *
 
 import os
 import sys
+import subprocess
+
+from setuptools import Command
 
 sys.path.append('.')
 
@@ -20,6 +23,7 @@ class GDataAnalysis:
             increaseMemory (bool, optional): Flag to either use default 2G of RAM(False) or higher 10G(True). Defaults to False.
         """
         self.DIR = DIR
+        self.newfileName = None
         self.flatCols = list()
         self.err = Error()
         if not increaseMemory:
@@ -45,6 +49,9 @@ class GDataAnalysis:
         """
         self.spark.stop()
         self.__setError(3)
+        if self.newfileName != None:
+            os.remove(self.newfileName)
+
 
     def __setError(self, status):
         """Internal function that sets different error at different program execution step
@@ -193,6 +200,13 @@ class GDataAnalysis:
                 df = self.spark.read.json(self.fileName)
             elif extension == "csv":
                 df = self.spark.read.csv(self.fileName, header=True)
+            elif extension == 'xlsx':
+                self.newfileName = 'temp.csv'
+                file=open(self.newfileName,'w+')
+                file.close()
+                command = "xlsx2csv '" + self.fileName + "' " + self.newfileName + ' 2>&1'
+                os.system(command)
+                df = self.spark.read.csv(self.newfileName, header=True)
             else:
                 self.__setError(4)
                 self.showError()
@@ -480,6 +494,7 @@ class GDataAnalysis:
         """
         if df == None:
             df = self.df
+        toDisplay = "*"
         if columns != None:
             columns = [x.strip() for x in columns.split(',')]
             self.flatten(df)
@@ -506,8 +521,10 @@ class GDataAnalysis:
             noDuplicats = self.df.count() - df.count()
             return noDuplicats
         else:
+            query = "select {} from df".format(toDisplay)
+            fulldf = self.sqlQuery(query)
             # query = " select * from df1 where not exists (select * from df2 where df1 = df2)"
-            return self.df.exceptAll(df)
+            return fulldf.exceptAll(df)
 
     def removeDuplicates(self, columns = None):
         """Function to remove the duplicates from the dataset and display the duplicates removed
@@ -532,12 +549,13 @@ class GDataAnalysis:
                     self.showError()
                     return
                 tempcolnames = ".".join(tempCols)
-                toDisplay.append("{} as {}".format(tempcolnames, onefield))
+                toDisplay.append("{}".format(tempcolnames))
             toDisplay = ", ".join(toDisplay)
             df =  df.dropDuplicates(toDisplay)
         else:
             df = df.dropDuplicates()
-        count=self.getDuplicates(count=False)
+        count = self.getDuplicates(count=False, columns = columns)
+        self.df = df
         print("Distinct count: "+str(df.count()))
         self.showRows(all = True, truncate=False, df=count)   
 

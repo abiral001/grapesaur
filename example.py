@@ -7,13 +7,13 @@ if __name__ == "__main__":
     gs = GDataAnalysis(os.getcwd(), increaseMemory=True)
 
     # Read File : this is a dummy file
-    gs.readFile("vericred_christus_health_plan_20220223.json")
+    gs.readFile("202206141017-mediacomcable_com_20220614.csv")
 
     # Get Column Names
     # print(gs.getColumnNames(colname='group_affiliations'))
 
     # Show Rows
-    # gs.showRows(truncate=False, no = 4, colname='unparsed_name')
+    # gs.showRows(truncate=False, no = 4)
 
     # Show data count of unique data
     # gs.showUniqueData('group_affiliations.name')
@@ -23,20 +23,20 @@ if __name__ == "__main__":
 
     # Search for a particular data inside the dataset
     # gs.search('null', searchfield='Unit')
-    # gs.search('Aaron', searchfield='provider.unparsed_name', displayfields='address_string')
+    # gs.search('Brandi', searchfield='provider.unparsed_name')
 
     # Get Column names to be used in search function
     # gs.flatten()
     # print(gs.flatCols)
 
     # Summary of data
-    gs.summary(stat = True)
+    # gs.summary(stat = True)
 
     # Run the SQL directly (use df instead of table name)
     # gs.showRows(all=True, truncate = False, df = gs.sqlQuery('select Unit from df'))
 
     # Get the duplicates
-    # gs.showRows(df = gs.getDuplicates(count = False), no = 2)
+    gs.showRows(df = gs.getDuplicates(count = False, columns= 'City'), all = True, truncate=False)
 
     # Convert file (works with only CSV)
     # gs.convertFile('csv', "|")
