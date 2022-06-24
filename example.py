@@ -7,7 +7,7 @@ if __name__ == "__main__":
     gs = GDataAnalysis(os.getcwd(), increaseMemory=True)
 
     # Read File : this is a dummy file
-    gs.readFile("202206141017-mediacomcable_com_20220614.csv")
+    gs.readFile("202206241712-Amazon_Category_Jobs_Merged.csv")
 
     # Get Column Names
     # print(gs.getColumnNames(colname='group_affiliations'))
@@ -36,12 +36,12 @@ if __name__ == "__main__":
     # gs.showRows(all=True, truncate = False, df = gs.sqlQuery('select Unit from df'))
 
     # Get the duplicates
-    gs.showRows(df = gs.getDuplicates(count = False, columns= 'City'), all = True, truncate=False)
+    # gs.showRows(df = gs.getDuplicates(count = False), all = True, truncate=False)
 
     # Convert file (works with only CSV)
     # gs.convertFile('csv', "|")
 
     # Compare two datasets
-    # gs.compareTwoDatasets('vericred_ultimate_health_plans_202206_old.json')
+    gs.compareTwoDatasets('202206220649-Amazon_Category_Jobs.csv', missing = False)
 
     

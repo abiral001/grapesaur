@@ -199,7 +199,7 @@ class GDataAnalysis:
             if extension == "json" or extension == "jl":
                 df = self.spark.read.json(self.fileName)
             elif extension == "csv":
-                df = self.spark.read.csv(self.fileName, header=True)
+                df = self.spark.read.csv(self.fileName, header=True, multiLine=True, escape="\"")
             elif extension == 'xlsx':
                 self.newfileName = 'temp.csv'
                 file=open(self.newfileName,'w+')
@@ -575,14 +575,20 @@ class GDataAnalysis:
         # convert.repartition(1).write.csv(self.fileName.split('.')[0] + '.' + type,sep = seperator)
         convert.coalesce(1).write.csv(self.fileName.split('.')[0] + '.' + type, sep = separator)
 
-    def compareTwoDatasets(self, old_df):
+    def compareTwoDatasets(self, old_df, missing = True):
         """Function to display missing data from new dataset which exists in old dataset
 
         Args:
             old_df (spark.df): The old dataset to compare
+            missing (bool): True => Missing data from new dataset are displayed; False => Common data between two datasets are displayed. DEFAULT: True
         """
         old = self.readFile(old_df, True)
         new = self.df
-        difference = old.exceptAll(new)
+        if missing == True:
+            difference = old.exceptAll(new)
+            term = "Missing"
+        else:
+            difference = old.intersectAll(new)
+            term = "Common"
         self.showRows(all=True, df = difference, truncate= False )
-        print("Total Missing = {}".format(difference.count()))
+        print("Total {} = {}".format(term, difference.count()))
