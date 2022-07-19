@@ -4,9 +4,7 @@ from pyspark.sql.types import *
 
 import os
 import sys
-import subprocess
-
-from setuptools import Command
+import re
 
 sys.path.append('.')
 
@@ -215,10 +213,22 @@ class GDataAnalysis:
             return
         self.__setError(0)
         self.showError()
+        df = self.fixColumns(df)
         if default == True:
             return df
         else:
             self.df = df
+    
+    def fixColumns(self, df):
+        columns = self.getColumnNames(df = df)
+        for col in columns:
+            if " " in col:
+                newcol = col.replace(" ", "_")
+                df = df.withColumnRenamed(col, newcol)
+            if col.endswith("."):
+                newcol = re.sub("\.+$", "", col)
+                df = df.withColumnRenamed(col, newcol)
+        return df
     
     def getColumnNames(self, colname = None, df = None):
         """Function to get all the column names of the provided df
